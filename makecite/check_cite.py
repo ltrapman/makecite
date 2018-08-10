@@ -5,7 +5,28 @@ import os
 import json
 
 # Package
-from .cmdline import get_bibtex
+#from cmdline import get_bibtex
+
+def get_bibtex(package_name):
+    """Fetch the bibtex entry for the specified package by comparing to our
+    local list of bibtex entries.
+    Parameters
+    ----------
+    package_name : str
+    Returns
+    -------
+    bibtex : str
+    """
+    full_path = os.path.join(_bib_path, '{0}.bib'.format(package_name.lower()))
+    if not os.path.exists(full_path):
+        raise ValueError('Bibtex not found for {0}! If you know it has a '
+                         'citation, please consider adding it via pull request '
+                         ' to: https://github.com/adrn/makecite')
+
+    with open(full_path, 'r') as f:
+        bibtex = f.read()
+
+    return bibtex
 
 _bib_path = os.path.join(os.path.split(os.path.abspath(__file__))[0],'bibfiles')
 
@@ -39,7 +60,7 @@ def notify_package_referenced(package,line):
     None
     """
     print('[\033[1m\033[92m  OK   \033[0m]: package \033[1m{0}\033[0m mentioned' 
-          'and referenced in line {1}'.format(package,line))
+          ' and referenced in line {1}'.format(package,line))
 
 def notify_package_not_referenced(package,line):
     """what to print if the package is not referenced correctly
@@ -54,7 +75,7 @@ def notify_package_not_referenced(package,line):
     None
     """
     print('[\033[1m\033[91mWARNING\033[0m]: package \033[1m{0}\033[0m mentioned'
-          ' but not referenced in line {1}}'.format(package,line))
+          ' but not referenced in line {1}'.format(package,line))
 
 def get_citekey_from_bibtex(package_name,bibtex_filename):
     """For a package found in the .tex file, fetch the cite_key from the .bib file
@@ -82,16 +103,17 @@ def get_citekey_from_bibtex(package_name,bibtex_filename):
     #parse the entry in the library and return (all) titles of corresponding articles
     article_titles = []
     for entry in bibtex_entries:
-        for line in entry:
+        for line in entry.split('\n'):
             if 'title' in line.lower():
                 title = line.split('=')[1].replace('"','').replace('{','').replace('}','').strip(' ')
+                #print(title)
                 article_titles.append(title)
                 break
-    
+        
     #print(article_titles)
     #in the bibtex file, find the reference corresponding to the titles
     cite_keys = []
-    for title in article_titles:            
+    for title in article_titles:     
         with open(bibtex_filename,'r') as f:
             for entry in f.readlines():
                 if title.lower() in entry.lower(): 
@@ -136,25 +158,26 @@ def main(tex_filename,bibtex_filename,debug=False):
             for package_name in bibfiles_in_repo:
                 if package_name.lower() in line.lower() :  
                     #software package is mentioned, find the cite_keys
-                    cite_keys = get_citekey_from_library(package_name,
+                    cite_keys = get_citekey_from_bibtex(package_name,
                                                          bibtex_filename)
+                    #print(cite_keys)
                                                          
                     #is the package also referenced?: Y/N
                     if are_citekeys_in_line(cite_keys,line):   #if Yes
-                        notify_package_referenced(package_name,line)
+                        notify_package_referenced(package_name,i)
                         cited_packages.append(package_name)
                         #package has been referenced once, stop checking for it
                         bibfiles_in_repo.remove(package_name)
                         
                     else:                                      #if No    
-                        notify_package_not_referenced(package_name,line)
+                        notify_package_not_referenced(package_name,i)
                         missed_packages.append(package_name)
     if debug: 
         return cited_packages, missed_packages
 
 
 if __name__ == '__main__':
-    texfile = os.path.join('../../sometexfile.tex')
-    bibfile = os.path.join('../../somebibfile.tex')
+    texfile = os.path.join('tests/data/sometexfile.tex')
+    bibfile = os.path.join('tests/data/somebibfile.bib')
 
     main(texfile,bibfile)

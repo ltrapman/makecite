@@ -126,6 +126,7 @@ def main(tex_filename,bibtex_filename):
         
     cited_packages = []
     missed_packages =[]
+    
     with open(tex_filename,'r') as texfile:
         for i,line in enumerate(texfile.readlines()):
             if line.startswith('%'):  
@@ -138,10 +139,12 @@ def main(tex_filename,bibtex_filename):
                     cite_keys = get_citekey_from_library(package_name,
                                                          bibtex_filename)
                                                          
-                    #is the package also reference?: Y/N
-                    if are_citekeys_in_line(reference,line):   #if Yes
+                    #is the package also referenced?: Y/N
+                    if are_citekeys_in_line(cite_keys,line):   #if Yes
                         notify_package_referenced(package_name,line)
                         cited_packages.append(package_name)
+                        #package has been referenced once, stop checking for it
+                        bibfiles_in_repo.remove(package_name)
                         
                     else:                                      #if No    
                         notify_package_not_referenced(package_name,line)

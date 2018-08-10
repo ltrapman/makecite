@@ -121,7 +121,7 @@ def get_all_bibfiles():
     return bibfiles
     
     
-def main(tex_filename,bibtex_filename):
+def main(tex_filename,bibtex_filename,debug=False):
     bibfiles_in_repo = get_all_bibfiles()    
         
     cited_packages = []
@@ -149,6 +149,8 @@ def main(tex_filename,bibtex_filename):
                     else:                                      #if No    
                         notify_package_not_referenced(package_name,line)
                         missed_packages.append(package_name)
+    if debug: 
+        return cited_packages, missed_packages
 
 
 if __name__ == '__main__':

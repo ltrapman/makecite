@@ -80,12 +80,29 @@ def get_citekey_from_bibtex(package_name,bibtex_filename):
     return cite_keys
     
   
-def 
+def get_all_bibfiles():
+    """Get all the .bib file names that are currently saved in the repo
+    
+    Parameters
+    ----------
+    
+    
+    Returns
+    -------
+    bibfiles: list
+    
+    """
+    bibfiles = []
+    for _,_,files in os.walk(_bib_path):
+        for _file in files:
+            bibfiles.append(_file.split('.bib')[0])
+    
+    return bibfiles
+    
+    
     
     
 def main(tex_filename,bibtex_filename):
-    #texfile = os.path.join('.', 'sometexfile.tex')
-    #bibtexfile = os.path.join('.','somebibfile.bib')
     libraryfile = os.path.join('makecite','makecite','modules.json')
     with open(libraryfile) as f:
         library = json.load(f)

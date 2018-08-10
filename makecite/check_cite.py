@@ -4,6 +4,9 @@
 import os
 import json
 
+# Package
+from .cmdline import get_bibtex
+
 _bib_path = os.path.join(os.path.split(os.path.abspath(__file__))[0],'bibfiles')
 
 ####
@@ -27,26 +30,35 @@ def notify_package_not_referenced(package,reference):
     print('[\033[1m\033[91mWARNING\033[0m]: package \033[1m{}\033[0m mentioned but not referenced'.format(package))
 
 
-def get_reference_from_library(package_name,libraryfile,bibtexfile):
+
+
+
+def get_citekey_from_bibtex(package_name,bibtex_filename):
     """For a package found in the .tex file, fetch the cite_key from the .bib file
+       NOTE: .bib file should  be the one used to compile the .tex file
     
     Parameters
-    -----------
-    package_name (str)
+    ----------
+    package_name: str
+    bibtex_filename: str
+    
+    
+    Returns
+    -------
+    cite_keys: list
     
     """
     
-    with open(libraryfile) as f:
-        library = json.load(f)
-    #search the library of the package
-    for key,entry in library.items():
-        #print(key,package)
-        if key.lower() == package.lower():
-            package_entries = entry
-            break
+    try:
+        bibtex = get_bibtex(package_name)
+        bibtex_entries = bibtex.split('@')[1:]
+    except ValueError:
+        # Package doesn't have a .bib file in this repo.
+        return None
+        
     #parse the entry in the library and return (all) titles of corresponding articles
     article_titles = []
-    for entry in package_entries:
+    for entry in bibtex_entries:
         for line in entry:
             if 'title' in line.lower():
                 title = line.split('=')[1].replace('"','').replace('{','').replace('}','').strip(' ')
@@ -55,22 +67,25 @@ def get_reference_from_library(package_name,libraryfile,bibtexfile):
     
     #print(article_titles)
     #in the bibtex file, find the reference corresponding to the titles
-    references = []
+    cite_keys = []
     for title in article_titles:            
-        with open(bibtexfile,'r') as f:
+        with open(bibtex_filename,'r') as f:
             for entry in f.readlines():
-                if title.lower() in entry.lower(): #this is the reference we are looking for
-                    reference = entry.split(',')[0].split('{')[1]
-                    #print(title,reference)
-                    references.append(reference)
+                if title.lower() in entry.lower(): 
+                    #this is the reference we are looking for
+                    cite_key = entry.split(',')[0].split('{')[1]
+                    cite_keys.append(cite_key)
                     break
 
-    return references
+    return cite_keys
+    
+  
+def 
     
     
-def main(texfile,library_filename):
-    texfile = os.path.join('.', 'sometexfile.tex')
-    bibtexfile = os.path.join('.','somebibfile.bib')
+def main(tex_filename,bibtex_filename):
+    #texfile = os.path.join('.', 'sometexfile.tex')
+    #bibtexfile = os.path.join('.','somebibfile.bib')
     libraryfile = os.path.join('makecite','makecite','modules.json')
     with open(libraryfile) as f:
         library = json.load(f)
@@ -82,9 +97,10 @@ def main(texfile,library_filename):
         if line.startswith('%'):  #this line is commented out in latex
             continue
         
-        for package in library.keys():
-            if is_package_in_line(package,line):     #software package is used
-                reference = get_reference_from_library(package,library_filename,bibtexfile)
+        for package_name in library.keys():
+            if is_package_in_line(package,line):     
+                #software package is used
+                cite_keys = get_citekey_from_library(package_name,bibtex_filename)
                 
                 #is the package also reference: Y/N
                 if are_references_in_line(reference,line):   #if Yes

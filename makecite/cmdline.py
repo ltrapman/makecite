@@ -1,7 +1,11 @@
 # Standard library
 import os
+import re
+import warnings
+import importlib
 
 # Package
+from . import __version__
 from .discover import find_all_files
 from .parsers import parser_map
 
@@ -59,7 +63,7 @@ def get_bibtex(package_name):
     bibtex : str
 
     """
-    full_path = os.path.join(_bib_path, '{0}.bib'.format(package_name))
+    full_path = os.path.join(_bib_path, '{0}.bib'.format(package_name.lower()))
     if not os.path.exists(full_path):
         raise ValueError('Bibtex not found for {0}! If you know it has a '
                          'citation, please consider adding it via pull request '
@@ -70,10 +74,72 @@ def get_bibtex(package_name):
 
     return bibtex
 
-def main(args=None):
-    from argparse import ArgumentParser
 
-    parser = ArgumentParser(description='TODO: docs')
+def get_bibtex_from_package(package_name, update_local=False):
+    """
+    Fetch BibTeX information directly from the package if available either via
+    __bibtex__ or __citation__.
+
+    Parameters
+    ----------
+    package_name : str
+        Name of the package.
+    update_local : bool
+        If True, update the local BibTeX information in ``makecite``. Default is False.
+
+    Returns
+    -------
+    bibtex : str or None
+        Returns the BibTeX string or None if the package is not installed or doesn't provide one.
+    """
+    try:
+        package = importlib.import_module(package_name)
+        for attr in ['__bibtex__', '__citation__']:
+            citation_info = getattr(package, attr, None)
+            if citation_info:
+                break
+    except ImportError:
+        warnings.warn("{} is not installed, cannot look for package provided BibTeX."
+                      .format(package_name))
+        return None
+
+    if citation_info and update_local:
+        path = os.path.join(_bib_path, '{0}.bib'.format(package_name))
+        with open(path, 'w') as f:
+            f.write(citation_info)
+
+    return citation_info
+
+
+def main(args=None):
+    from argparse import ArgumentParser, RawTextHelpFormatter
+
+    examples = '''Get bibtex records for packages used in a single script, and store to a `.bib` file in the current working directory:
+
+    makecite my_script.py
+
+
+    Get bibtex records for packages used in all `.py` scripts in the current directory and store to a `.bib` file called "software_refs.bib":
+
+    makecite --ext=.py -o software_refs.bib .
+
+
+    Get bibtex records for packages used in all `.py` scripts and IPython notebook, `.ipynb`, files in two paths `my_code` and `my_notebooks`:
+
+    makecite --ext=.py --ext=.ipynb my_code my_notebooks
+
+
+    Get bibtex records for packages used in all `.py` scripts in the current directory and output a AAS journals `\software{}` tag:
+
+    makecite --ext=.py --aas .
+    '''
+
+    desc = ('(Version {0})\n\n'
+            'Generate latex + bibtex citation commands by looking at what '
+            'packages are imported in your Python code.\n\n'
+            'Examples\n--------\n{1}'.format(__version__, examples))
+    parser = ArgumentParser(description=desc,
+                            formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('-e', '--ext', action='append', dest='extensions',
                         default=None,
@@ -97,7 +163,12 @@ def main(args=None):
                         help='A path, filename, or list of paths to search '
                              'for imported packages.')
 
+    parser.add_argument('--version', action='version',
+                        version=__version__)
+
     args = parser.parse_args(args)
+
+    cite_tag_pattr = re.compile('@[a-zA-Z]+\{(.*),')
 
     if not args.extensions:
         args.extensions = ['.py', '.ipynb']
@@ -108,10 +179,14 @@ def main(args=None):
     all_bibtex = ""
     y_citation = []
     n_citation = []
+    name_to_tags = dict()
     for package in sorted(list(packages)):
         try:
-            bibtex = get_bibtex(package)
+            bibtex = get_bibtex_from_package(package)
+            if bibtex is None:
+                bibtex = get_bibtex(package)
             y_citation.append(package)
+            name_to_tags[package] = cite_tag_pattr.findall(bibtex)
         except ValueError:
             # Package doesn't have a .bib file in this repo. For now, just alert
             # the user, but we might want to try a web query or something?
@@ -139,4 +214,12 @@ def main(args=None):
         print("\nBibtex:")
         print(all_bibtex)
 
-    # TODO: if --aas, also print \software{} tag?
+    if args.aas_tag:
+        cites = []
+        for name, tags in name_to_tags.items():
+            cites.append('{0} \\citep{{{1}}}'.format(name, ', '.join(tags)))
+
+        software = r'\software{{{0}}}'.format(', '.join(cites))
+
+        print("\nSoftware tag for AAS journals:")
+        print(software)

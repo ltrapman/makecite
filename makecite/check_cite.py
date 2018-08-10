@@ -9,10 +9,6 @@ from .cmdline import get_bibtex
 
 _bib_path = os.path.join(os.path.split(os.path.abspath(__file__))[0],'bibfiles')
 
-####
-# helper functions
-
-#check if references B are in current line
 def are_citekeys_in_line(cite_keys,line):
     """Check if all cite_keys are present in the line
     
@@ -30,18 +26,35 @@ def are_citekeys_in_line(cite_keys,line):
         return False
     return all([cite_key.lower() in line.lower() for cite_key in cite_keys])
 
-
 def notify_package_referenced(package,line):
+    """what to print if the package is referenced correctly
+    
+    Parameters
+    ----------
+    package: str
+    line: str
+    
+    Returns
+    -------
+    None
+    """
     print('[\033[1m\033[92m  OK   \033[0m]: package \033[1m{0}\033[0m mentioned' 
           'and referenced in line {1}'.format(package,line))
 
 def notify_package_not_referenced(package,line):
+    """what to print if the package is not referenced correctly
+    
+    Parameters
+    ----------
+    package: str
+    line: str
+    
+    Returns
+    -------
+    None
+    """
     print('[\033[1m\033[91mWARNING\033[0m]: package \033[1m{0}\033[0m mentioned'
           ' but not referenced in line {1}}'.format(package,line))
-
-
-
-
 
 def get_citekey_from_bibtex(package_name,bibtex_filename):
     """For a package found in the .tex file, fetch the cite_key from the .bib file
@@ -95,7 +108,6 @@ def get_all_bibfiles():
     Parameters
     ----------
     
-    
     Returns
     -------
     bibfiles: list
@@ -136,4 +148,8 @@ def main(tex_filename,bibtex_filename):
                         missed_packages.append(package_name)
 
 
+if __name__ == '__main__':
+    texfile = os.path.join('../../sometexfile.tex')
+    bibfile = os.path.join('../../somebibfile.tex')
 
+    main(texfile,bibfile)

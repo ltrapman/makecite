@@ -13,10 +13,22 @@ _bib_path = os.path.join(os.path.split(os.path.abspath(__file__))[0],'bibfiles')
 # helper functions
 
 #check if references B are in current line
-def are_citekeys_in_line(citekeys,line):
-    if len(citekeys) == 0:  #the reference was not found in the bibtex
+def are_citekeys_in_line(cite_keys,line):
+    """Check if all cite_keys are present in the line
+    
+    Parameters
+    ----------
+    cite_keys: list
+    line: str
+    
+    Returns
+    -------
+    boolean
+    
+    """
+    if len(cite_keys) == 0:  #the reference was not found in the bibtex
         return False
-    return all([ref.lower() in line.lower() for citekey in citekeys])
+    return all([cite_key.lower() in line.lower() for cite_key in cite_keys])
 
 
 def notify_package_referenced(package,line):

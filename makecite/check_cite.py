@@ -12,22 +12,20 @@ _bib_path = os.path.join(os.path.split(os.path.abspath(__file__))[0],'bibfiles')
 ####
 # helper functions
 
-#check if package A is in current line
-def is_package_in_line(package,line):
-    return package.lower() in line.lower()
-
 #check if references B are in current line
-def are_references_in_line(references,line):
-    if len(references) == 0:  #the reference was not found in the bibtex
+def are_citekeys_in_line(citekeys,line):
+    if len(citekeys) == 0:  #the reference was not found in the bibtex
         return False
-    return all([ref.lower() in line.lower() for ref in references])
+    return all([ref.lower() in line.lower() for citekey in citekeys])
 
 
-def notify_package_referenced(package,reference):
-    print('[\033[1m\033[92m  OK   \033[0m]: package \033[1m{}\033[0m mentioned and referenced'.format(package))
+def notify_package_referenced(package,line):
+    print('[\033[1m\033[92m  OK   \033[0m]: package \033[1m{0}\033[0m mentioned' 
+          'and referenced in line {1}'.format(package,line))
 
-def notify_package_not_referenced(package,reference):
-    print('[\033[1m\033[91mWARNING\033[0m]: package \033[1m{}\033[0m mentioned but not referenced'.format(package))
+def notify_package_not_referenced(package,line):
+    print('[\033[1m\033[91mWARNING\033[0m]: package \033[1m{0}\033[0m mentioned'
+          ' but not referenced in line {1}}'.format(package,line))
 
 
 
@@ -79,7 +77,6 @@ def get_citekey_from_bibtex(package_name,bibtex_filename):
 
     return cite_keys
     
-  
 def get_all_bibfiles():
     """Get all the .bib file names that are currently saved in the repo
     
@@ -100,31 +97,31 @@ def get_all_bibfiles():
     return bibfiles
     
     
-    
-    
 def main(tex_filename,bibtex_filename):
-    libraryfile = os.path.join('makecite','makecite','modules.json')
-    with open(libraryfile) as f:
-        library = json.load(f)
-    
-    
-    
-    with open(texfile,'r') as texfile:
-    for line in texfile.readlines():
-        if line.startswith('%'):  #this line is commented out in latex
-            continue
+    bibfiles_in_repo = get_all_bibfiles()    
         
-        for package_name in library.keys():
-            if is_package_in_line(package,line):     
-                #software package is used
-                cite_keys = get_citekey_from_library(package_name,bibtex_filename)
-                
-                #is the package also reference: Y/N
-                if are_references_in_line(reference,line):   #if Yes
-                    notify_package_referenced(package,reference)
-                else:                                      #if No    
-                    notify_package_not_referenced(package,reference)
-    
+    cited_packages = []
+    missed_packages =[]
+    with open(tex_filename,'r') as texfile:
+        for i,line in enumerate(texfile.readlines()):
+            if line.startswith('%'):  
+                # this line is commented out in latex so it shouldn't be checked
+                continue
+            
+            for package_name in bibfiles_in_repo:
+                if package_name.lower() in line.lower() :  
+                    #software package is mentioned, find the cite_keys
+                    cite_keys = get_citekey_from_library(package_name,
+                                                         bibtex_filename)
+                                                         
+                    #is the package also reference?: Y/N
+                    if are_citekeys_in_line(reference,line):   #if Yes
+                        notify_package_referenced(package_name,line)
+                        cited_packages.append(package_name)
+                        
+                    else:                                      #if No    
+                        notify_package_not_referenced(package_name,line)
+                        missed_packages.append(package_name)
 
 
 
